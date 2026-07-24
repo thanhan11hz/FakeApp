@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <!-- Green fill matching the current balance card in the UI -->
+    <solid android:color="#5E9F52" />
+
+    <!-- Rounded corners -->
+    <corners android:radius="24dp" />
+
+</shape>

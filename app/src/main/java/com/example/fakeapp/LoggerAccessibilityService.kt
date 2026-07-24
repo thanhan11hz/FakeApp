@@ -10,6 +10,10 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
+import android.widget.Toast
+import com.example.fakeapp.databinding.OverlayLayoutBinding
+import android.os.Handler
+import android.os.Looper
 
 //
 //class LoggerAccessibilityService : AccessibilityService() {
@@ -105,6 +109,7 @@ class LoggerAccessibilityService : AccessibilityService() {
     private lateinit var overlayView: View
     private lateinit var params: WindowManager.LayoutParams
 
+    private var screenHeight = 0
     private var overlayShowing = false
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -121,7 +126,7 @@ class LoggerAccessibilityService : AccessibilityService() {
         // Bỏ qua event của chính app
         if (pkg == packageName) return
 
-        if (pkg == "com.android.chrome") {
+        if (pkg == "com.example.cs426_seminar_app") {
             showOverlay()
         } else {
             hideOverlay()
@@ -133,18 +138,39 @@ class LoggerAccessibilityService : AccessibilityService() {
 
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
-        overlayView = LayoutInflater.from(this)
-            .inflate(R.layout.overlay_layout, null)
+        screenHeight = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            windowManager.currentWindowMetrics.bounds.height()
+        } else {
+            @Suppress("DEPRECATION")
+            val metrics = android.util.DisplayMetrics()
+            windowManager.defaultDisplay.getRealMetrics(metrics)
+            metrics.heightPixels
+        }
+
+        val binding = OverlayLayoutBinding.inflate(LayoutInflater.from(this))
+        overlayView = binding.root
+
+        binding.btnLogin.setOnClickListener {
+            Log.d("LOGIN", "LOGIN BUTTON")
+            // fake warning
+            binding.tvError.visibility = View.VISIBLE
+
+            // hide overlay after 2 secs
+            Handler(Looper.getMainLooper()).postDelayed({
+                hideOverlay()
+                binding.tvError.visibility = View.INVISIBLE
+            }, 2000)
+        }
 
         params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         )
-
-        params.gravity = Gravity.CENTER
+        params.gravity = Gravity.TOP or Gravity.START
     }
 
     private fun showOverlay() {
@@ -159,26 +185,21 @@ class LoggerAccessibilityService : AccessibilityService() {
     }
 
     private fun hideOverlay() {
-
         if (!overlayShowing) return
-
         windowManager.removeView(overlayView)
-
         overlayShowing = false
-
         Log.d("Overlay", "HIDE")
     }
 
     override fun onDestroy() {
-
         if (overlayShowing) {
             windowManager.removeView(overlayView)
         }
-
         super.onDestroy()
     }
-
     override fun onInterrupt() {
 
     }
 }
+
+
